@@ -1,0 +1,89 @@
+---
+title: "Making sound decisions"
+tags: [data,analytics,datascience, decision-making, performance, data visualization]
+author: "Secundino Sexto"
+date: "1 April 2020"
+output: html_document
+---
+
+```{r setup, echo=FALSE}
+knitr::opts_chunk$set(eval = TRUE , fig.align = "center", results = FALSE, warning = FALSE,message=FALSE, echo = FALSE)
+
+```
+
+## Problem to solve
+
+An organization wanted to secure a proper performance-based and rewarding system so they were measuring and assessing many different perspectives: billable hours, overtime, first time right,upselling,...
+One of them was the so called "customer orientation", where  service engineers were rewarded on the amount of jobs being done on the customer premises as well as the quality of those jobs.
+Quality of the jobs was just a binary performance, measuring the recorded claims (that could be due to reasons not under the engineers' sphere of influence, but that's another story).
+
+
+## Solution
+The company had already several "workload" metrics and also customer feedback was regularly collected, so it was a matter of helping people frame the problem in the right way. 
+So we started with one region, where there were 6 very qualified engineers, and we took the data for the same period of time, knowing the number of jobs they did well, and the number of jobs where there was a customer complaint,
+
+```{r}
+library(ggplot2)
+claims <- c(35, 16, 21,20,25,27)
+jobs <- c(427,406,328,348,460,405)
+tech <- c("A","B","C","D","E","F")
+data <- as.data.frame(rbind(cbind(tech,jobs,v3=c("ok")), 
+                      cbind(tech,claims,v3=c("claim"))),
+                      stringsAsFactors=FALSE)
+data$tech<-as.factor(data$tech)
+data$jobs <-as.integer(data$jobs)
+names(data)[3] <- "performance"
+data$performance <- as.factor(data$performance)
+
+```
+
+With that in mind, the initial hypothesis was that performance was quite different for some techs, with high and low performers very easily identified, as you can see from the following chart:
+```{r plot1, results =TRUE, echo =TRUE}
+#Seeing this % grap, we may conclude that performance is not the same
+ggplot(data=data, aes(x=tech, y=jobs, fill=performance ))+
+  geom_col(position="fill" ,color="black")+
+  ggtitle("Stacked bar chart comparing proportions in each ownership class") +
+  xlab("Tech")+ylab("Jobs done")+
+  scale_fill_grey()+
+  scale_y_continuous(labels = scales::percent)
+
+```
+
+
+However, I challenged the **convential wisdom**, and we run an advance statistical technique to prove whether we had enough evidence of that.
+
+```{r }
+table.aux <- xtabs(jobs ~ tech + performance , data=data)
+table.aux
+prop.table(table.aux,margin=1)
+
+```
+We did what is known as "multiple sample proportion test", using a $\chi 2$ test. In R you can do that very easily as you can see below:
+```{r test, results =TRUE, echo =TRUE}
+perf.test<-chisq.test(table.aux)
+perf.test
+perf.test$observed
+perf.test$expected
+perf.test$residuals
+
+```
+
+
+Because p-value is 0.63, which is very large,hence we conclude that there is no evidence of a difference in the proportion of performance among st the technicians A-F, or that there is no evidence against performance
+being independent of technician.
+
+What does this mean? That performance is the same for all, if we include statistical the point of view.
+
+
+## Comments
+Let's recap briefly what we have achieved:
+
+We can observe the variations that were leading us to the **wrong conclusions**,where Engineer A had a performance poor compares to others, and B might have a better performance than the remainder.
+```{r}
+assocplot(table.aux)
+
+```
+though we proved that they are statistical variations and not significant to be purely attributable to individual performance of each engineer.    
+
+The suggestion on measuring this KPI in a different way  was very well received by the Engineers, because they always felt that the KPI was quite unpredictable, and that a higher percentage of claims didn't mean the quality of the job was bad, becuase there was some statistical factor in that.
+
